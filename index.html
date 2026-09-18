@@ -1,23 +1,35 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-    <title>Structor Sovereign HUD</title>
-    <meta http-equiv="refresh" content="3">
+    <meta charset="UTF-8">
+    <title>Sovereign Structor Dashboard</title>
     <style>
-        body { background: #0f172a; color: #38bdf8; font-family: monospace; text-align: center; padding-top: 50px; }
-        .card { background: #1e293b; border: 1px solid #334155; display: inline-block; padding: 30px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.3); }
-        h1 { color: #f8fafc; }
-        .stat { font-size: 1.2em; margin: 10px 0; }
+        body { background: #0f172a; color: #f8fafc; font-family: monospace; padding: 20px; }
+        .card { background: #1e293b; padding: 20px; border-radius: 8px; border: 1px solid #334155; max-width: 500px; }
+        .accent { color: #38bdf8; font-weight: bold; }
     </style>
 </head>
 <body>
     <div class="card">
-        <h1>Structor Sovereign HUD</h1>
-        <div class="stat">Status: <span style="color: #4ade80;">LIVE & AUTONOMOUS</span></div>
-        <div class="stat">Cost: $0.00 | Memory: 0 Bytes</div>
-        <div class="stat">Port: 9337 (io_uring Active)</div>
-        <hr style="border-color: #334155; margin: 20px 0;">
-        <p>Dashboard refreshes automatically every 3 seconds.</p>
+        <h2>Sovereign AI/DI Core</h2>
+        <p>Wallet: <span class="accent" id="addr">Loading...</span></p>
+        <p>Balance: <span class="accent" id="bal">0.00</span> MTRX</p>
+        <p>Status: <span class="accent" id="status">Connecting...</span></p>
     </div>
+    <script>
+        async function updateMetrics() {
+            try {
+                const res = await fetch('/api/wallet');
+                const data = await res.json();
+                document.getElementById('addr').innerText = data.address.substring(0,12) + '...';
+                document.getElementById('bal').innerText = data.balance_mtrx;
+                document.getElementById('status').innerText = data.status;
+            } catch(e) {
+                document.getElementById('status').innerText = 'Offline';
+            }
+        }
+        setInterval(updateMetrics, 5000);
+        updateMetrics();
+    </script>
 </body>
 </html>

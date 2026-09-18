@@ -1,38 +1,15 @@
-version: "2.0"
-services:
-  structor-daemon:
-    image: ipfs://bafybeig...structor-v1-wasm
-    expose:
-      - port: 8080
-        as: 80
-        to:
-          - global: true
-    command: ["structor", "run", "StructorEnterpriseV1_0", "--io-uring-enable"]
-    env:
-      - AKASH_NETWORK=true
-      - ZERO_MEMORY_MODE=strict
+mesh:
+  node_id: "Sovereign-Alpha-01"
+  port: 9337
+  dashboard_port: 8090
 
-profiles:
-  compute:
-    structor-daemon:
-      resources:
-        cpu:
-          units: 1.0
-        memory:
-          size: 512Mi
-        storage:
-          size: 1Gi
-  placement:
-    dcloud:
-      pricing:
-        structor-daemon:
-          denom: uakt
-          amount: 50
-      attributes:
-        region: us-east
+wallet:
+  address: "0xSTRUCT_SOVEREIGN_PRIMARY_TREASURY_001"
+  token_symbol: "MTRX"
+  payout_threshold: 100.0
+  auto_sweep: true
 
-deployment:
-  structor-daemon:
-    dcloud:
-      profile: structor-daemon
-      count: 10
+mining:
+  target_hashrate: 1000
+  reward_per_unit: 0.05
+  throttle_on_battery: true
