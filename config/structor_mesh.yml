@@ -4,7 +4,7 @@ mesh:
   dashboard_port: 8090
 
 wallet:
-  address: "0xSTRUCT_SOVEREIGN_PRIMARY_TREASURY_001"
+  address: "0x6b6c00413C3FF21E9a43c3ed86d23D57f98FfD57"
   token_symbol: "MTRX"
   payout_threshold: 100.0
   auto_sweep: true

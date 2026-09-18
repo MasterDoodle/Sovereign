@@ -5,27 +5,41 @@
     <title>Sovereign Structor Dashboard</title>
     <style>
         body { background: #0f172a; color: #f8fafc; font-family: monospace; padding: 20px; }
-        .card { background: #1e293b; padding: 20px; border-radius: 8px; border: 1px solid #334155; max-width: 500px; }
+        .card { background: #1e293b; padding: 20px; border-radius: 8px; border: 1px solid #334155; max-width: 520px; }
         .accent { color: #38bdf8; font-weight: bold; }
+        button { background: #0284c7; color: white; border: none; padding: 10px 15px; border-radius: 6px; cursor: pointer; font-family: monospace; margin-top: 10px; }
+        button:hover { background: #0369a1; }
     </style>
 </head>
 <body>
     <div class="card">
         <h2>Sovereign AI/DI Core</h2>
-        <p>Wallet: <span class="accent" id="addr">Loading...</span></p>
-        <p>Balance: <span class="accent" id="bal">0.00</span> MTRX</p>
-        <p>Status: <span class="accent" id="status">Connecting...</span></p>
+        <p>Node Target Wallet: <span class="accent" id="addr">Loading...</span></p>
+        <p>Connected MetaMask: <span class="accent" id="web3_addr">Disconnected</span></p>
+        <p>Mined Balance: <span class="accent" id="bal">0.00</span> MTRX</p>
+        <p>Blocks Mined: <span class="accent" id="blocks">0</span></p>
+        <button onclick="connectMetaMask()">Connect MetaMask</button>
     </div>
     <script>
         async function updateMetrics() {
             try {
                 const res = await fetch('/api/wallet');
                 const data = await res.json();
-                document.getElementById('addr').innerText = data.address.substring(0,12) + '...';
+                document.getElementById('addr').innerText = data.address;
                 document.getElementById('bal').innerText = data.balance_mtrx;
-                document.getElementById('status').innerText = data.status;
-            } catch(e) {
-                document.getElementById('status').innerText = 'Offline';
+                document.getElementById('blocks').innerText = data.blocks_mined;
+            } catch(e) {}
+        }
+        async function connectMetaMask() {
+            if (window.ethereum) {
+                try {
+                    const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
+                    document.getElementById('web3_addr').innerText = accounts[0];
+                } catch (err) {
+                    alert('MetaMask connection rejected');
+                }
+            } else {
+                alert('MetaMask browser extension not detected');
             }
         }
         setInterval(updateMetrics, 5000);
