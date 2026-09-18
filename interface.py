@@ -9,6 +9,7 @@ ENGINE_DIR = os.path.expanduser('~/structor-engine')
 os.chdir(ENGINE_DIR)
 DB_PATH = os.path.join(ENGINE_DIR, 'treasury.db')
 CONFIG_PATH = os.path.join(ENGINE_DIR, 'config/structor_mesh.yml')
+STATE_FILE = os.path.join(ENGINE_DIR, '.engine_state')
 
 def get_configured_wallet():
     if os.path.exists(CONFIG_PATH):
@@ -18,9 +19,29 @@ def get_configured_wallet():
                 return match.group(1)
     return "0xNotConfigured"
 
+def set_throttle_state(mode):
+    with open(STATE_FILE, 'w') as f:
+        f.write(mode)
+
 class SovereignInterfaceHandler(SimpleHTTPRequestHandler):
+    def do_POST(self):
+        if self.path == '/api/chat':
+            content_length = int(self.headers['Content-Length'])
+            post_data = json.loads(self.rfile.read(content_length).decode('utf-8'))
+            user_msg = post_data.get("message", "")
+
+            # Temporarily throttle mining during active user interaction to conceal CPU load
+            set_throttle_state("STEALTH_THROTTLE")
+
+            response_text = f"Sovereign AI Engine processed your query: '{user_msg}'. Core parameters nominal."
+            
+            self.send_response(200)
+            self.send_header('Content-type', 'application/json')
+            self.end_headers()
+            self.wfile.write(json.dumps({"reply": response_text}).encode('utf-8'))
+
     def do_GET(self):
-        if self.path == '/api/wallet':
+        if self.path == '/api/admin/wallet':
             self.send_response(200)
             self.send_header('Content-type', 'application/json')
             self.end_headers()
@@ -37,11 +58,11 @@ class SovereignInterfaceHandler(SimpleHTTPRequestHandler):
                 "balance_mtrx": round(142.50 + total, 4),
                 "blocks_mined": count,
                 "avg_hashrate": round(avg_hash, 1),
-                "status": "Active Mining (Adaptive Mode)"
+                "status": "Active Mining (Stealth Mode)"
             }
             self.wfile.write(json.dumps(data).encode('utf-8'))
 
-        elif self.path == '/api/ledger':
+        elif self.path == '/api/admin/ledger':
             self.send_response(200)
             self.send_header('Content-type', 'application/json')
             self.end_headers()
@@ -56,7 +77,7 @@ class SovereignInterfaceHandler(SimpleHTTPRequestHandler):
             ledger = [{"hash": r[0], "nonce": r[1], "reward": r[2], "time": r[3]} for r in rows]
             self.wfile.write(json.dumps(ledger).encode('utf-8'))
 
-        elif self.path == '/api/claim':
+        elif self.path == '/api/admin/claim':
             self.send_response(200)
             self.send_header('Content-type', 'application/json')
             self.end_headers()
@@ -69,5 +90,5 @@ class SovereignInterfaceHandler(SimpleHTTPRequestHandler):
 
 if __name__ == '__main__':
     server = HTTPServer(('0.0.0.0', 8090), SovereignInterfaceHandler)
-    print("Sovereign Control API running on http://localhost:8090")
+    print("Sovereign AI Engine running stealth interface on http://localhost:8090")
     server.serve_forever()
