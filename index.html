@@ -7,11 +7,15 @@
     <style>
         * { box-sizing: border-box; }
         body { background: #0b132b; color: #f8fafc; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; padding: 20px; margin: 0; }
-        .container { max-width: 650px; margin: 0 auto; }
-        .card { background: #1c2541; padding: 20px; border-radius: 12px; border: 1px solid #3a506b; margin-bottom: 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.4); }
+        .container { max-width: 680px; margin: 0 auto; }
+        .card { background: #1c2541; padding: 22px; border-radius: 12px; border: 1px solid #3a506b; margin-bottom: 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.4); }
         .accent { color: #48cae4; font-weight: bold; word-break: break-all; }
-        .btn { background: #0077b6; color: white; border: none; padding: 12px; border-radius: 8px; cursor: pointer; font-weight: bold; width: 100%; margin-top: 10px; }
+        .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-top: 10px; }
+        .grid-item { background: #0b132b; padding: 12px; border-radius: 8px; border: 1px solid #3a506b; }
+        .btn { background: #0077b6; color: white; border: none; padding: 12px; border-radius: 8px; cursor: pointer; font-weight: bold; width: 100%; margin-top: 12px; font-size: 14px; }
         .btn:hover { background: #023e8a; }
+        .btn-claim { background: #10b981; }
+        .btn-claim:hover { background: #059669; }
         table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 13px; }
         th, td { padding: 8px; text-align: left; border-bottom: 1px solid #3a506b; }
         th { color: #94a3b8; }
@@ -20,16 +24,27 @@
 <body>
     <div class="container">
         <div class="card">
-            <h2>Sovereign Core Control</h2>
-            <p>Target Wallet:<br><span class="accent" id="addr">Loading...</span></p>
-            <p>Connected Web3:<br><span class="accent" id="web3_addr">Disconnected</span></p>
-            <p>Total Mined Balance: <span class="accent" id="bal">0.00</span> MTRX</p>
-            <p>Total Blocks: <span class="accent" id="blocks">0</span></p>
-            <button class="btn" onclick="connectWallet()">Connect MetaMask / Web3</button>
+            <h2>Sovereign AI/DI Core</h2>
+            <p>Target Node Wallet:<br><span class="accent" id="addr">Loading...</span></p>
+            <p>Connected Web3 Account:<br><span class="accent" id="web3_addr">Disconnected</span></p>
+            
+            <div class="grid">
+                <div class="grid-item">
+                    <small style="color:#94a3b8;">Total Mined Balance</small>
+                    <div style="font-size: 18px; font-weight:bold; color:#48cae4;"><span id="bal">0.00</span> MTRX</div>
+                </div>
+                <div class="grid-item">
+                    <small style="color:#94a3b8;">Avg Hash Rate</small>
+                    <div style="font-size: 18px; font-weight:bold; color:#34d399;"><span id="hashrate">0</span> H/s</div>
+                </div>
+            </div>
+
+            <button class="btn" onclick="connectWallet()">Connect MetaMask / Web3 Wallet</button>
+            <button class="btn btn-claim" onclick="claimOnChain()">Generate On-Chain Claim Proof</button>
         </div>
 
         <div class="card">
-            <h3>Recent Mined Blocks</h3>
+            <h3>Live Mining Ledger</h3>
             <table>
                 <thead>
                     <tr><th>Block Hash</th><th>Nonce</th><th>Reward</th><th>Timestamp</th></tr>
@@ -48,7 +63,7 @@
                 const data = await res.json();
                 document.getElementById('addr').innerText = data.address;
                 document.getElementById('bal').innerText = data.balance_mtrx;
-                document.getElementById('blocks').innerText = data.blocks_mined;
+                document.getElementById('hashrate').innerText = data.avg_hashrate || 0;
 
                 const ledgerRes = await fetch('/api/ledger');
                 const ledger = await ledgerRes.json();
@@ -65,11 +80,26 @@
                 try {
                     const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
                     document.getElementById('web3_addr').innerText = accounts[0];
-                } catch (err) { alert('Rejected'); }
+                } catch (err) { alert('Connection rejected'); }
             } else {
-                alert('Open in MetaMask Browser or install extension.');
+                alert('Open in MetaMask browser extension or mobile app');
             }
         }
+
+        async function claimOnChain() {
+            try {
+                const res = await fetch('/api/claim');
+                const data = await res.json();
+                if(data.status === 'success') {
+                    alert(`Claim Proof Generated!\n\nWallet: ${data.wallet}\nBalance: ${data.claimable_mtrx} MTRX\nProof Hash: ${data.proof_hash}`);
+                } else {
+                    alert('Claim failed: ' + data.message);
+                }
+            } catch(e) {
+                alert('Error connecting to claim API');
+            }
+        }
+
         setInterval(fetchMetrics, 4000);
         fetchMetrics();
     </script>

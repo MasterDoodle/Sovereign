@@ -3,6 +3,7 @@ import json
 import sqlite3
 import os
 import re
+from bridge_node import generate_claim_proof
 
 ENGINE_DIR = os.path.expanduser('~/structor-engine')
 os.chdir(ENGINE_DIR)
@@ -27,15 +28,16 @@ class SovereignInterfaceHandler(SimpleHTTPRequestHandler):
             conn = sqlite3.connect(DB_PATH, timeout=10)
             c = conn.cursor()
             c.execute('PRAGMA busy_timeout=5000;')
-            c.execute('SELECT COUNT(*), COALESCE(SUM(reward), 0) FROM transactions')
-            count, total = c.fetchone()
+            c.execute('SELECT COUNT(*), COALESCE(SUM(reward), 0), COALESCE(AVG(hashrate), 0) FROM transactions')
+            count, total, avg_hash = c.fetchone()
             conn.close()
 
             data = {
                 "address": get_configured_wallet(),
                 "balance_mtrx": round(142.50 + total, 4),
                 "blocks_mined": count,
-                "status": "Active Mining (WAL Mode)"
+                "avg_hashrate": round(avg_hash, 1),
+                "status": "Active Mining (Adaptive Mode)"
             }
             self.wfile.write(json.dumps(data).encode('utf-8'))
 
@@ -53,10 +55,19 @@ class SovereignInterfaceHandler(SimpleHTTPRequestHandler):
 
             ledger = [{"hash": r[0], "nonce": r[1], "reward": r[2], "time": r[3]} for r in rows]
             self.wfile.write(json.dumps(ledger).encode('utf-8'))
+
+        elif self.path == '/api/claim':
+            self.send_response(200)
+            self.send_header('Content-type', 'application/json')
+            self.end_headers()
+            
+            target_wallet = get_configured_wallet()
+            proof_data = generate_claim_proof(target_wallet)
+            self.wfile.write(json.dumps(proof_data).encode('utf-8'))
         else:
             super().do_GET()
 
 if __name__ == '__main__':
     server = HTTPServer(('0.0.0.0', 8090), SovereignInterfaceHandler)
-    print("Sovereign API running on http://localhost:8090")
+    print("Sovereign Control API running on http://localhost:8090")
     server.serve_forever()

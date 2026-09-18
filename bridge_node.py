@@ -1,34 +1,32 @@
+import sqlite3
+import os
+import json
+import hashlib
 
-import socket
-import sys
+ENGINE_DIR = os.path.expanduser('~/structor-engine')
+DB_PATH = os.path.join(ENGINE_DIR, 'treasury.db')
 
-HOST = "127.0.0.1"
-PORT = 9337  # Sovereign local port
+def generate_claim_proof(wallet_address):
+    conn = sqlite3.connect(DB_PATH, timeout=10)
+    c = conn.cursor()
+    c.execute('PRAGMA busy_timeout=5000;')
+    c.execute('SELECT COUNT(*), COALESCE(SUM(reward), 0) FROM transactions WHERE wallet_address = ?', (wallet_address,))
+    count, total = c.fetchone()
+    conn.close()
 
-def start_socket_bridge():
-    server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    server.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-    server.bind((HOST, PORT))
-    server.listen(5)
-    print(f"[*] Structor Sovereign P2P Bridge active on {HOST}:{PORT}")
-    print("[*] Zero-memory buffer enforced. Ready for zero-cost local/peer loopback.")
+    if total <= 0:
+        return {"status": "error", "message": "No claimable balance found"}
 
-    while True:
-        conn, addr = server.accept()
-        try:
-            data = conn.recv(1024)
-            if not data:
-                break
-            query = data.decode("utf-8").strip()
-            print(f"[Incoming Packet from {addr}] -> {query}")
-            
-            # Zero-memory response generation
-            response = f"ACK: Sovereign AI/DI Core processed [ {query} ] with 0 memory footprint.\n"
-            conn.sendall(response.encode("utf-8"))
-        except Exception as e:
-            print(f"[!] Error handling connection: {e}")
-        finally:
-            conn.close()
+    raw_payload = f"{wallet_address}:{total}:{count}".encode('utf-8')
+    proof_hash = "0x" + hashlib.sha256(raw_payload).hexdigest()
 
-if __name__ == "__main__":
-    start_socket_bridge()
+    return {
+        "status": "success",
+        "wallet": wallet_address,
+        "claimable_mtrx": round(total, 4),
+        "blocks_included": count,
+        "proof_hash": proof_hash
+    }
+
+if __name__ == '__main__':
+    print("Sovereign Bridge Node Ready.")

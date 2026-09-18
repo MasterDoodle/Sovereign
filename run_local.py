@@ -19,6 +19,7 @@ def init_db():
         block_hash TEXT,
         nonce INTEGER,
         reward REAL,
+        hashrate REAL,
         timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
     )''')
     conn.commit()
@@ -36,7 +37,7 @@ def mine_block():
     target_wallet = get_target_wallet()
     start_time = time.time()
     nonce = 0
-    target_prefix = "0"  # Adaptive difficulty challenge
+    target_prefix = "00"  # Increased adaptive difficulty challenge
     
     while True:
         nonce += 1
@@ -52,8 +53,8 @@ def mine_block():
     conn = sqlite3.connect(DB_PATH, timeout=10)
     c = conn.cursor()
     c.execute('PRAGMA busy_timeout=5000;')
-    c.execute('INSERT INTO transactions (wallet_address, block_hash, nonce, reward) VALUES (?, ?, ?, ?)', 
-              (target_wallet, f"0x{block_hash[:16]}", nonce, reward))
+    c.execute('INSERT INTO transactions (wallet_address, block_hash, nonce, reward, hashrate) VALUES (?, ?, ?, ?, ?)', 
+              (target_wallet, f"0x{block_hash[:16]}", nonce, reward, hashrate))
     conn.commit()
     conn.close()
     
@@ -61,7 +62,7 @@ def mine_block():
 
 if __name__ == '__main__':
     init_db()
-    print("Sovereign Mining Core Active with WAL Concurrency...")
+    print("Sovereign Adaptive Mining Engine Core Active...")
     while True:
         mine_block()
-        time.sleep(8)
+        time.sleep(6)
