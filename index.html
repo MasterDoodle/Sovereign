@@ -2,48 +2,76 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Sovereign Structor Dashboard</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sovereign AI/DI Control Center</title>
     <style>
-        body { background: #0f172a; color: #f8fafc; font-family: monospace; padding: 20px; }
-        .card { background: #1e293b; padding: 20px; border-radius: 8px; border: 1px solid #334155; max-width: 520px; }
-        .accent { color: #38bdf8; font-weight: bold; }
-        button { background: #0284c7; color: white; border: none; padding: 10px 15px; border-radius: 6px; cursor: pointer; font-family: monospace; margin-top: 10px; }
-        button:hover { background: #0369a1; }
+        * { box-sizing: border-box; }
+        body { background: #0b132b; color: #f8fafc; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; padding: 20px; margin: 0; }
+        .container { max-width: 650px; margin: 0 auto; }
+        .card { background: #1c2541; padding: 20px; border-radius: 12px; border: 1px solid #3a506b; margin-bottom: 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.4); }
+        .accent { color: #48cae4; font-weight: bold; word-break: break-all; }
+        .btn { background: #0077b6; color: white; border: none; padding: 12px; border-radius: 8px; cursor: pointer; font-weight: bold; width: 100%; margin-top: 10px; }
+        .btn:hover { background: #023e8a; }
+        table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 13px; }
+        th, td { padding: 8px; text-align: left; border-bottom: 1px solid #3a506b; }
+        th { color: #94a3b8; }
     </style>
 </head>
 <body>
-    <div class="card">
-        <h2>Sovereign AI/DI Core</h2>
-        <p>Node Target Wallet: <span class="accent" id="addr">Loading...</span></p>
-        <p>Connected MetaMask: <span class="accent" id="web3_addr">Disconnected</span></p>
-        <p>Mined Balance: <span class="accent" id="bal">0.00</span> MTRX</p>
-        <p>Blocks Mined: <span class="accent" id="blocks">0</span></p>
-        <button onclick="connectMetaMask()">Connect MetaMask</button>
+    <div class="container">
+        <div class="card">
+            <h2>Sovereign Core Control</h2>
+            <p>Target Wallet:<br><span class="accent" id="addr">Loading...</span></p>
+            <p>Connected Web3:<br><span class="accent" id="web3_addr">Disconnected</span></p>
+            <p>Total Mined Balance: <span class="accent" id="bal">0.00</span> MTRX</p>
+            <p>Total Blocks: <span class="accent" id="blocks">0</span></p>
+            <button class="btn" onclick="connectWallet()">Connect MetaMask / Web3</button>
+        </div>
+
+        <div class="card">
+            <h3>Recent Mined Blocks</h3>
+            <table>
+                <thead>
+                    <tr><th>Block Hash</th><th>Nonce</th><th>Reward</th><th>Timestamp</th></tr>
+                </thead>
+                <tbody id="ledger_body">
+                    <tr><td colspan="4">Loading blocks...</td></tr>
+                </tbody>
+            </table>
+        </div>
     </div>
+
     <script>
-        async function updateMetrics() {
+        async function fetchMetrics() {
             try {
                 const res = await fetch('/api/wallet');
                 const data = await res.json();
                 document.getElementById('addr').innerText = data.address;
                 document.getElementById('bal').innerText = data.balance_mtrx;
                 document.getElementById('blocks').innerText = data.blocks_mined;
+
+                const ledgerRes = await fetch('/api/ledger');
+                const ledger = await ledgerRes.json();
+                let html = '';
+                ledger.forEach(b => {
+                    html += `<tr><td>${b.hash}</td><td>${b.nonce}</td><td>+${b.reward}</td><td>${b.time.split(' ')[1] || b.time}</td></tr>`;
+                });
+                document.getElementById('ledger_body').innerHTML = html || '<tr><td colspan="4">No blocks yet</td></tr>';
             } catch(e) {}
         }
-        async function connectMetaMask() {
+
+        async function connectWallet() {
             if (window.ethereum) {
                 try {
                     const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
                     document.getElementById('web3_addr').innerText = accounts[0];
-                } catch (err) {
-                    alert('MetaMask connection rejected');
-                }
+                } catch (err) { alert('Rejected'); }
             } else {
-                alert('MetaMask browser extension not detected');
+                alert('Open in MetaMask Browser or install extension.');
             }
         }
-        setInterval(updateMetrics, 5000);
-        updateMetrics();
+        setInterval(fetchMetrics, 4000);
+        fetchMetrics();
     </script>
 </body>
 </html>

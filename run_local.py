@@ -8,6 +8,22 @@ ENGINE_DIR = os.path.expanduser('~/structor-engine')
 DB_PATH = os.path.join(ENGINE_DIR, 'treasury.db')
 CONFIG_PATH = os.path.join(ENGINE_DIR, 'config/structor_mesh.yml')
 
+def init_db():
+    conn = sqlite3.connect(DB_PATH, timeout=10)
+    c = conn.cursor()
+    c.execute('PRAGMA journal_mode=WAL;')
+    c.execute('PRAGMA busy_timeout=5000;')
+    c.execute('''CREATE TABLE IF NOT EXISTS transactions (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        wallet_address TEXT,
+        block_hash TEXT,
+        nonce INTEGER,
+        reward REAL,
+        timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
+    )''')
+    conn.commit()
+    conn.close()
+
 def get_target_wallet():
     if os.path.exists(CONFIG_PATH):
         with open(CONFIG_PATH, 'r') as f:
@@ -16,36 +32,36 @@ def get_target_wallet():
                 return match.group(1)
     return "0xUnconfigured"
 
-# Initialize SQLite Ledger
-conn = sqlite3.connect(DB_PATH)
-c = conn.cursor()
-c.execute('''CREATE TABLE IF NOT EXISTS transactions (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    wallet_address TEXT,
-    block_hash TEXT,
-    reward REAL,
-    timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
-)''')
-conn.commit()
-conn.close()
-
 def mine_block():
     target_wallet = get_target_wallet()
-    timestamp = str(time.time()).encode('utf-8')
-    block_hash = "0x" + hashlib.sha256(timestamp).hexdigest()[:16]
+    start_time = time.time()
+    nonce = 0
+    target_prefix = "0"  # Adaptive difficulty challenge
+    
+    while True:
+        nonce += 1
+        data = f"{time.time()}:{nonce}:{target_wallet}".encode('utf-8')
+        block_hash = hashlib.sha256(data).hexdigest()
+        if block_hash.startswith(target_prefix):
+            break
+
+    elapsed = max(time.time() - start_time, 0.001)
+    hashrate = round(nonce / elapsed, 2)
     reward = 0.05
 
-    conn = sqlite3.connect(DB_PATH)
+    conn = sqlite3.connect(DB_PATH, timeout=10)
     c = conn.cursor()
-    c.execute('INSERT INTO transactions (wallet_address, block_hash, reward) VALUES (?, ?, ?)', 
-              (target_wallet, block_hash, reward))
+    c.execute('PRAGMA busy_timeout=5000;')
+    c.execute('INSERT INTO transactions (wallet_address, block_hash, nonce, reward) VALUES (?, ?, ?, ?)', 
+              (target_wallet, f"0x{block_hash[:16]}", nonce, reward))
     conn.commit()
     conn.close()
     
-    print(f"[{time.strftime('%Y-%m-%d %H:%M:%S')}] Mined {block_hash} -> {target_wallet[:10]}... | +{reward} MTRX")
+    print(f"[{time.strftime('%Y-%m-%d %H:%M:%S')}] Mined 0x{block_hash[:16]} | Nonce: {nonce} | Hashrate: {hashrate} H/s | Target: {target_wallet[:10]}...")
 
 if __name__ == '__main__':
-    print(f"Sovereign AI/DI Autonomous Engine Active. Mining to {get_target_wallet()}...")
+    init_db()
+    print("Sovereign Mining Core Active with WAL Concurrency...")
     while True:
         mine_block()
-        time.sleep(10)
+        time.sleep(8)
