@@ -1,30 +1,30 @@
-
 import time
+import sqlite3
 import os
-import random
-from datetime import datetime
+import hashlib
 
-LOG_PATH = "structor.log"
+DB_PATH = os.path.expanduser('~/structor-engine/treasury.db')
 
-def log_event(message):
-    timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    entry = f"[{timestamp}] {message}\n"
-    print(entry.strip())
-    with open(LOG_PATH, "a") as f:
-        f.write(entry)
+# Initialize treasury table
+conn = sqlite3.connect(DB_PATH)
+c = conn.cursor()
+c.execute('CREATE TABLE IF NOT EXISTS transactions (id INTEGER PRIMARY KEY, block_hash TEXT, reward REAL, timestamp DATETIME DEFAULT CURRENT_TIMESTAMP)')
+conn.commit()
+conn.close()
 
-log_event("[*] STRUCTOR SOVEREIGN ENGINE: ACTIVE & AUTONOMOUS")
-log_event("[*] Zero-memory affine state enforced. $0.00 cost basis.")
-log_event("[*] Entering overnight continuous evolution and mining cycle...")
-
-cycle = 0
-while True:
-    cycle += 1
-    # Simulate active autonomous tasks: matrix optimization, weight pruning, and local model learning
-    ops_mined = random.randint(1200, 4800)
-    evolution_gain = round(random.uniform(0.01, 0.05), 4)
+def mine_block():
+    timestamp = str(time.time()).encode('utf-8')
+    block_hash = hashlib.sha256(timestamp).hexdigest()[:16]
     
-    log_event(f"[CYCLE {cycle}] Mined {ops_mined} sovereign matrix units | Evolution efficiency gain: +{evolution_gain}%")
-    
-    # Sleep interval between autonomous self-improvement iterations (e.g., every 30 seconds)
-    time.sleep(30)
+    conn = sqlite3.connect(DB_PATH)
+    c = conn.cursor()
+    c.execute('INSERT INTO transactions (block_hash, reward) VALUES (?, ?)', (f"0x{block_hash}", 0.05))
+    conn.commit()
+    conn.close()
+    print(f"[{time.strftime('%Y-%m-%d %H:%M:%S')}] Mined block 0x{block_hash} | Reward: +0.05 MTRX")
+
+if __name__ == '__main__':
+    print("Sovereign AI/DI Local Engine Started...")
+    while True:
+        mine_block()
+        time.sleep(10)
