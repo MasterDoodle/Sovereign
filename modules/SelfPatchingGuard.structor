@@ -1,0 +1,22 @@
+ephemeral daemon SelfPatchingGuard v94.0.0 {
+    import wasi:kernel/io_uring.{SubmissionRing};
+    import wasi:compiler/formal_verification.{ProofOracle};
+
+    export async action applyHotSwap(affine targetModule: ExecutableWasm, patchData: StructorPatch) {
+        enforceZeroMemoryState();
+
+        let compiledPatch = patchData.compileToWasm();
+        let safetyProof = ProofOracle.verifyNoLeaks(compiledPatch);
+
+        if safetyProof.isValid() {
+            SubmissionRing.swapModuleAtomic(
+                targetModule.getPointer(), 
+                compiledPatch.getPointer()
+            );
+            
+            yield HotSwapSuccess(timestamp: kernel.now());
+        } else {
+            yield VulnerabilityBlocked(reason: safetyProof.getError());
+        }
+    }
+}

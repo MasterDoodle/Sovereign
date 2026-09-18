@@ -1,0 +1,38 @@
+version: "2.0"
+services:
+  structor-daemon:
+    image: ipfs://bafybeig...structor-v1-wasm
+    expose:
+      - port: 8080
+        as: 80
+        to:
+          - global: true
+    command: ["structor", "run", "StructorEnterpriseV1_0", "--io-uring-enable"]
+    env:
+      - AKASH_NETWORK=true
+      - ZERO_MEMORY_MODE=strict
+
+profiles:
+  compute:
+    structor-daemon:
+      resources:
+        cpu:
+          units: 1.0
+        memory:
+          size: 512Mi
+        storage:
+          size: 1Gi
+  placement:
+    dcloud:
+      pricing:
+        structor-daemon:
+          denom: uakt
+          amount: 50
+      attributes:
+        region: us-east
+
+deployment:
+  structor-daemon:
+    dcloud:
+      profile: structor-daemon
+      count: 10

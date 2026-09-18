@@ -1,0 +1,24 @@
+ephemeral daemon ZkMiningThresholdGuard v95.0.0 {
+    import wasi:grid/telemetry.{GridStream};
+    import wasi:crypto/sp1_zkvm.{ProverArena, ZkBountyMesh};
+
+    const IDLE_THRESHOLD_HZ: f64 = 500.0;
+
+    export async action* maximizeIdleCompute(affine telemetry: GridStream, affine zkMesh: ZkBountyMesh) {
+        enforceZeroMemoryState();
+        
+        while let some(gridState) = await telemetry.next() {
+            if gridState.getFrequency() < IDLE_THRESHOLD_HZ {
+                let bounty = zkMesh.getHighestPayingProof();
+                
+                region miningArena {
+                    let generatedProof = ProverArena.executeSp1(bounty.targetLogic, miningArena);
+                    let reward = zkMesh.submitProofAndClaimYield(generatedProof);
+                    yield CapitalGenerated(amount: reward, source: "SP1_ZK_Mining");
+                }
+            } else {
+                yield executeGridArbitrage(gridState);
+            }
+        }
+    }
+}
