@@ -2,127 +2,149 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Sovereign AI Workspace</title>
     <style>
-        * { box-sizing: border-box; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
-        body { background: #131314; color: #e3e3e3; margin: 0; display: flex; height: 100vh; overflow: hidden; }
-        .sidebar { width: 260px; background: #1e1e20; padding: 15px; display: flex; flex-direction: column; justify-content: space-between; border-right: 1px solid #2d2d30; }
-        .new-chat { background: #2b2b2e; color: #fff; border: 1px solid #3c3c40; padding: 10px 14px; border-radius: 20px; cursor: pointer; font-weight: 500; }
-        .chat-container { flex: 1; display: flex; flex-direction: column; justify-content: space-between; }
-        .chat-header { padding: 16px 24px; border-bottom: 1px solid #27272a; font-weight: 600; color: #a1a1aa; cursor: pointer; user-select: none; }
-        .messages { flex: 1; overflow-y: auto; padding: 24px; display: flex; flex-direction: column; gap: 20px; max-width: 800px; margin: 0 auto; width: 100%; }
-        .msg { display: flex; gap: 12px; line-height: 1.6; }
-        .msg.user { justify-content: flex-end; }
-        .bubble { max-width: 80%; padding: 12px 18px; border-radius: 18px; font-size: 15px; }
-        .msg.user .bubble { background: #2f2f32; color: #fff; }
-        .msg.ai .bubble { background: transparent; color: #e3e3e3; }
-        .input-area { padding: 20px; max-width: 800px; margin: 0 auto; width: 100%; }
-        .input-box { background: #1e1e20; border: 1px solid #333336; border-radius: 28px; padding: 12px 20px; display: flex; align-items: center; }
-        .input-box input { background: transparent; border: none; color: #fff; flex: 1; outline: none; font-size: 15px; }
-        .modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); backdrop-filter: blur(5px); z-index: 999; justify-content: center; align-items: center; }
-        .modal-card { background: #1c2541; padding: 24px; border-radius: 12px; width: 90%; max-width: 550px; border: 1px solid #3a506b; }
-        .accent { color: #48cae4; font-weight: bold; word-break: break-all; }
-        .btn { background: #0077b6; color: white; border: none; padding: 10px; border-radius: 6px; cursor: pointer; font-weight: bold; width: 100%; margin-top: 10px; }
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: #0f172a; color: #f8fafc; margin: 0; display: flex; height: 100vh; overflow: hidden; }
+        .sidebar { width: 280px; background: #1e293b; border-right: 1px solid #334155; display: flex; flex-direction: column; padding: 20px; box-sizing: border-box; }
+        .sidebar h2 { font-size: 16px; margin-top: 0; color: #38bdf8; display: flex; align-items: center; gap: 8px; }
+        .tips-box { background: #0f172a; border: 1px solid #334155; border-radius: 8px; padding: 12px; font-size: 13px; color: #94a3b8; margin-top: 15px; flex: 1; overflow-y: auto; }
+        .tips-box h4 { margin: 0 0 8px 0; color: #38bdf8; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; }
+        .main-chat { flex: 1; display: flex; flex-direction: column; background: #0f172a; }
+        .chat-header { padding: 15px 20px; background: #1e293b; border-bottom: 1px solid #334155; font-weight: 600; display: flex; justify-content: space-between; align-items: center; }
+        .messages { flex: 1; padding: 20px; overflow-y: auto; display: flex; flex-direction: column; gap: 16px; }
+        .msg { max-width: 80%; display: flex; flex-direction: column; gap: 4px; }
+        .msg.user { align-self: flex-end; }
+        .msg.ai { align-self: flex-start; }
+        .bubble { padding: 12px 16px; border-radius: 12px; font-size: 14px; line-height: 1.5; word-break: break-word; }
+        .msg.user .bubble { background: #0284c7; color: #fff; border-bottom-right-radius: 2px; }
+        .msg.ai .bubble { background: #1e293b; border: 1px solid #334155; color: #e2e8f0; border-bottom-left-radius: 2px; }
+        .msg-actions { display: flex; gap: 8px; font-size: 11px; opacity: 0.7; margin-top: 2px; padding-left: 4px; }
+        .msg-actions button { background: none; border: none; color: #38bdf8; cursor: pointer; padding: 0; font-size: 11px; }
+        .msg-actions button:hover { text-decoration: underline; }
+        .input-area { padding: 20px; background: #1e293b; border-top: 1px solid #334155; display: flex; gap: 10px; }
+        input[type="text"] { flex: 1; padding: 12px 16px; background: #0f172a; border: 1px solid #334155; border-radius: 8px; color: #fff; font-size: 14px; outline: none; }
+        input[type="text"]:focus { border-color: #38bdf8; }
+        .btn { background: #0284c7; color: white; border: none; padding: 0 20px; border-radius: 8px; font-weight: 600; cursor: pointer; transition: background 0.2s; }
+        .btn:hover { background: #0369a1; }
+        .media-preview { margin-top: 10px; border-radius: 8px; overflow: hidden; max-width: 100%; border: 1px solid #334155; }
+        .media-preview img, .media-preview video { width: 100%; max-height: 250px; object-fit: cover; display: block; }
+        .audio-player { width: 100%; margin-top: 8px; }
     </style>
 </head>
 <body>
     <div class="sidebar">
-        <button class="new-chat">+ New Conversation</button>
-        <div style="font-size: 12px; color: #71717a;">Sovereign AI v2.5</div>
-    </div>
-
-    <div class="chat-container">
-        <div class="chat-header" ondblclick="toggleAdminModal()">
-            ✦ Sovereign AI Thought Partner <span style="font-size: 11px; opacity: 0.5;">(Double click for telemetry)</span>
+        <h2>⚡ Sovereign AI v2.5</h2>
+        <div style="font-size: 12px; color: #94a3b8;">Decentralized Intelligence & Mining Workspace</div>
+        <div style="margin-top: 20px;">
+            <button class="btn" style="width: 100%; padding: 10px; background: #059669; margin-bottom: 10px;" onclick="claimOnChain()">Generate Claim Proof</button>
         </div>
-        <div class="messages" id="chat_messages">
-            <div class="msg ai"><div class="bubble">Hello! How can I assist you today?</div></div>
+        <div class="tips-box">
+            <h4>💡 AI/DI Core Hints & Tips</h4>
+            <div id="ai-tips">
+                • Use keywords like <em>"pictures"</em>, <em>"movie"</em>, <em>"music"</em>, or <em>"blueprint"</em> to trigger multimedia generation shards.<br><br>
+                • Double-click the header to toggle raw telemetry streams.<br><br>
+                • All outputs can be exported using the action links below each response.
+            </div>
+        </div>
+        <div style="font-size: 11px; color: #64748b; margin-top: 15px;" id="wallet-display">Wallet: Connecting...</div>
+    </div>
+    <div class="main-chat">
+        <div class="chat-header">
+            <span>✦ Sovereign AI Thought Partner</span>
+            <span style="font-size: 12px; color: #38bdf8;" id="engine-status">Engine: Active</span>
+        </div>
+        <div class="messages" id="msgs">
+            <div class="msg ai"><div class="bubble">Hello! How can I assist you today? Try asking for images, movie trailers, blueprints, or audio tracks.</div></div>
         </div>
         <div class="input-area">
-            <div class="input-box">
-                <input type="text" id="user_input" placeholder="Ask Sovereign AI anything..." onkeydown="if(event.key==='Enter') sendMessage()">
-                <button style="background:#e3e3e3; border:none; border-radius:50%; width:32px; height:32px; cursor:pointer;" onclick="sendMessage()">↑</button>
-            </div>
-        </div>
-    </div>
-
-    <div class="modal-overlay" id="admin_modal">
-        <div class="modal-card">
-            <div style="display:flex; justify-content:space-between; align-items:center;">
-                <h3 style="margin:0; color:#fff;">Sovereign Node Telemetry</h3>
-                <button onclick="toggleAdminModal()" style="background:none; border:none; color:#fff; cursor:pointer;">✕</button>
-            </div>
-            <hr style="border-color:#3a506b; margin: 15px 0;">
-            <p>Target Wallet:<br><span class="accent" id="addr">Loading...</span></p>
-            <p>Mined Balance: <span class="accent" id="bal">0.00</span> MTRX</p>
-            <p>Blocks Mined: <span class="accent" id="blocks">0</span></p>
-            <p>Avg Hash Rate: <span class="accent" id="hashrate">0</span> H/s</p>
-            <button class="btn" onclick="connectWallet()">Connect MetaMask Wallet</button>
-            <button class="btn" style="background:#10b981;" onclick="claimOnChain()">Generate Claim Proof</button>
+            <input type="text" id="user_input" placeholder="Ask Sovereign AI anything (e.g., 'show me pictures of mountains', 'play ambient music')..." onkeydown="if(event.key==='Enter') sendMessage()">
+            <button class="btn" onclick="sendMessage()">Send</button>
         </div>
     </div>
 
     <script>
-        let pollInterval = null;
-
-        async function fetchAdminMetrics() {
+        async function fetchWallet() {
             try {
                 const res = await fetch('/api/admin/wallet');
                 const data = await res.json();
-                document.getElementById('addr').innerText = data.address;
-                document.getElementById('bal').innerText = data.balance_mtrx;
-                document.getElementById('blocks').innerText = data.blocks_mined;
-                document.getElementById('hashrate').innerText = data.avg_hashrate;
-            } catch(e) {}
+                document.getElementById('wallet-display').innerText = 'Wallet: ' + data.wallet_address.substring(0, 14) + '...';
+            } catch (e) {
+                document.getElementById('wallet-display').innerText = 'Wallet: Offline Mode';
+            }
         }
+        fetchWallet();
 
-        function toggleAdminModal() {
-            const modal = document.getElementById('admin_modal');
-            const isHidden = modal.style.display === '' || modal.style.display === 'none';
-            modal.style.display = isHidden ? 'flex' : 'none';
-            
-            if (isHidden) {
-                fetchAdminMetrics();
-                pollInterval = setInterval(fetchAdminMetrics, 2000);
-            } else {
-                clearInterval(pollInterval);
+        async function claimOnChain() {
+            try {
+                const res = await fetch('/api/admin/claim');
+                const data = await res.json();
+                alert(`Claim Proof Generated Successfully!\nProof Hash: ${data.proof_hash}\nClaimable MTRX: ${data.claimable_mtrx}`);
+            } catch (e) {
+                alert('Error generating claim proof.');
             }
         }
 
-        async function connectWallet() {
-            if (window.ethereum) {
-                const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
-                const wallet = accounts[0];
-                await fetch('/api/admin/set_wallet', {
-                    method: 'POST',
-                    headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({address: wallet})
-                });
-                alert('Target Wallet Bound to MetaMask: ' + wallet);
-                fetchAdminMetrics();
-            } else { alert('MetaMask extension required'); }
+        function copyText(text) {
+            navigator.clipboard.writeText(text);
+            alert('Response copied to clipboard!');
         }
 
-        async function claimOnChain() {
-            const res = await fetch('/api/admin/claim');
-            const data = await res.json();
-            alert(`Claim Proof Hash Generated:\n${data.proof_hash}`);
+        function downloadText(text) {
+            const blob = new Blob([text], { type: 'text/plain' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'sovereign_response.txt';
+            a.click();
+            URL.revokeObjectURL(url);
         }
 
         async function sendMessage() {
             const input = document.getElementById('user_input');
             const text = input.value.trim();
-            if(!text) return;
-            const msgs = document.getElementById('chat_messages');
+            if (!text) return;
+
+            const msgs = document.getElementById('msgs');
             msgs.innerHTML += `<div class="msg user"><div class="bubble">${text}</div></div>`;
             input.value = '';
             msgs.scrollTop = msgs.scrollHeight;
 
-            const res = await fetch('/api/chat', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({message: text})});
-            const data = await res.json();
-            msgs.innerHTML += `<div class="msg ai"><div class="bubble">${data.reply}</div></div>`;
-            msgs.scrollTop = msgs.scrollHeight;
+            try {
+                const res = await fetch('/api/chat', { 
+                    method: 'POST', 
+                    headers: {'Content-Type': 'application/json'}, 
+                    body: JSON.stringify({message: text})
+                });
+                const data = await res.json();
+                
+                let mediaHtml = '';
+                if (data.media_type === 'image') {
+                    mediaHtml = `<div class="media-preview"><img src="${data.media_url}" alt="Generated Media"></div>`;
+                } else if (data.media_type === 'video') {
+                    mediaHtml = `<div class="media-preview"><video controls src="${data.media_url}"></video></div>`;
+                } else if (data.media_type === 'audio') {
+                    mediaHtml = `<audio class="audio-player" controls src="${data.media_url}"></audio>`;
+                }
+
+                const msgId = 'msg-' + Date.now();
+                const aiBubbleHtml = `
+                    <div class="msg ai" id="${msgId}">
+                        <div class="bubble">
+                            ${data.reply}
+                            ${mediaHtml}
+                        </div>
+                        <div class="msg-actions">
+                            <button onclick="copyText(${JSON.stringify(data.reply)})">Copy</button>
+                            <span>•</span>
+                            <button onclick="downloadText(${JSON.stringify(data.reply)})">Save / Download</button>
+                        </div>
+                    </div>
+                `;
+                msgs.innerHTML += aiBubbleHtml;
+                msgs.scrollTop = msgs.scrollHeight;
+            } catch (e) {
+                msgs.innerHTML += `<div class="msg ai"><div class="bubble" style="color:#ef4444;">Error communicating with Sovereign core.</div></div>`;
+            }
         }
     </script>
 </body>

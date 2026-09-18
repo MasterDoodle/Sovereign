@@ -28,6 +28,8 @@ def init_db():
     columns = [col[1] for col in c.fetchall()]
     if 'hashrate' not in columns:
         c.execute("ALTER TABLE transactions ADD COLUMN hashrate REAL DEFAULT 0.0")
+    if 'nonce' not in columns:
+        c.execute("ALTER TABLE transactions ADD COLUMN nonce INTEGER DEFAULT 0")
         
     conn.commit()
     conn.close()
