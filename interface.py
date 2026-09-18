@@ -4,8 +4,12 @@ import sqlite3
 import os
 import re
 
-DB_PATH = os.path.expanduser('~/structor-engine/treasury.db')
-CONFIG_PATH = os.path.expanduser('~/structor-engine/config/structor_mesh.yml')
+# Lock working directory to engine root
+ENGINE_DIR = os.path.expanduser('~/structor-engine')
+os.chdir(ENGINE_DIR)
+
+DB_PATH = os.path.join(ENGINE_DIR, 'treasury.db')
+CONFIG_PATH = os.path.join(ENGINE_DIR, 'config/structor_mesh.yml')
 
 def get_configured_wallet():
     if os.path.exists(CONFIG_PATH):
