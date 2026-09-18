@@ -1,0 +1,465 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>Sovereign Fabric // PWA Zero-Memory OS</title>
+    
+    <!-- PWA & Mobile Web Capabilities -->
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Sovereign">
+    <meta name="theme-color" content="#07080c">
+    <link rel="manifest" id="manifest-link">
+    <link rel="apple-touch-icon" id="apple-icon">
+
+    <style>
+        :root {
+            --bg: #07080c;
+            --panel: rgba(14, 17, 25, 0.92);
+            --border: rgba(0, 255, 204, 0.25);
+            --accent: #00ffcc;
+            --text: #e2e8f0;
+            --dim: #64748b;
+            --sidebar-width: 360px;
+        }
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Courier New', monospace; }
+        body { 
+            background: var(--bg); 
+            color: var(--text); 
+            display: flex; 
+            height: 100vh; 
+            height: -webkit-fill-available;
+            overflow: hidden; 
+            flex-direction: row;
+        }
+
+        #sidebar { 
+            width: var(--sidebar-width); 
+            background: var(--panel); 
+            border-right: 1px solid var(--border); 
+            display: flex; 
+            flex-direction: column; 
+            padding: 12px; 
+            gap: 10px; 
+            overflow-y: auto; 
+            backdrop-filter: blur(12px);
+            z-index: 100;
+            transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        #viewport { 
+            flex: 1; 
+            display: flex; 
+            flex-direction: column; 
+            position: relative; 
+            height: 100%;
+        }
+
+        #canvas-container { flex: 1; position: relative; background: #000; width: 100%; height: 100%; }
+        canvas { position: absolute; top:0; left:0; width: 100%; height: 100%; touch-action: none; }
+        
+        #console { 
+            height: 180px; 
+            background: rgba(3,4,6,0.95); 
+            border-top: 1px solid var(--border); 
+            padding: 10px; 
+            overflow-y: auto; 
+            font-size: 11px; 
+            color: var(--accent); 
+        }
+
+        .panel-box { border: 1px solid var(--border); padding: 10px; border-radius: 6px; background: rgba(0,0,0,0.4); }
+        h3 { font-size: 11px; text-transform: uppercase; letter-spacing: 1px; color: var(--accent); margin-bottom: 6px; }
+        
+        button, input { 
+            background: #10141e; 
+            border: 1px solid var(--border); 
+            color: var(--text); 
+            padding: 8px 10px; 
+            font-size: 11px; 
+            cursor: pointer; 
+            border-radius: 4px; 
+            width: 100%;
+            min-height: 38px;
+        }
+        button:active { background: var(--accent); color: #000; font-weight: bold; }
+
+        #mobile-nav-toggle { display: none; }
+
+        @media (max-width: 768px) {
+            body { flex-direction: column; }
+            #sidebar {
+                position: absolute;
+                top: 0;
+                left: 0;
+                width: 100%;
+                height: 75vh;
+                border-right: none;
+                border-bottom: 1px solid var(--border);
+                transform: translateY(-100%);
+                padding-bottom: env(safe-area-inset-bottom);
+                padding-top: calc(10px + env(safe-area-inset-top));
+            }
+            #sidebar.open { transform: translateY(0); }
+            #mobile-nav-toggle {
+                display: block;
+                position: absolute;
+                top: calc(10px + env(safe-area-inset-top));
+                right: 12px;
+                z-index: 200;
+                width: auto;
+                padding: 6px 12px;
+                background: var(--panel);
+                border: 1px solid var(--accent);
+                color: var(--accent);
+            }
+            #console {
+                height: 140px;
+                padding-bottom: calc(10px + env(safe-area-inset-bottom));
+            }
+        }
+    </style>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/pyodide/v0.26.1/full/pyodide.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.12.0/sql-wasm.js"></script>
+</head>
+<body>
+
+    <button id="mobile-nav-toggle" onclick="toggleSidebar()">☰ Control Fabric</button>
+
+    <div id="sidebar">
+        <div>
+            <h2 style="color:var(--accent); font-size:14px; letter-spacing:2px;">SOVEREIGN // FABRIC</h2>
+            <p style="font-size:9px; color:var(--dim);">$0.00 COST // PWA // MULTI-ENGINE</p>
+        </div>
+
+        <div class="panel-box">
+            <h3>1. Voice Control</h3>
+            <button id="mic-btn" onclick="toggleVoiceControl()">🎙️ Start Listener ("Hey Sovereign")</button>
+            <div id="voice-status" style="font-size:9px; margin-top:4px; color:var(--dim);">Voice: Standby</div>
+        </div>
+
+        <div class="panel-box">
+            <h3>2. Cognitive Engine & RAG</h3>
+            <button onclick="initLocalWebGPU()">Alloc WebGPU VRAM Core</button>
+            <input type="file" id="file-input" style="display:none;" onchange="handleFileSelect(event)">
+            <button style="margin-top:4px;" onclick="document.getElementById('file-input').click()">In-RAM Document RAG (File Select/Drop)</button>
+            <button style="margin-top:4px;" onclick="queryRAMRAG()">Search Vector Heap</button>
+        </div>
+
+        <div class="panel-box">
+            <h3>3. WASM Runtimes</h3>
+            <button onclick="initPyodideWasm()">Load WASM Python Runtime</button>
+            <button style="margin-top:4px;" onclick="runSamplePython()">Exec Python Snippet</button>
+            <button style="margin-top:4px;" onclick="initSQLiteWasm()">Init In-RAM SQLite DB</button>
+        </div>
+
+        <div class="panel-box">
+            <h3>4. Rendering & Spatial</h3>
+            <button onclick="renderGLSLMovie()">Run GLSL Shader</button>
+            <button style="margin-top:4px;" onclick="renderCADBlueprint()">Generate SVG CAD</button>
+            <button style="margin-top:4px;" onclick="launchWebXRSession()">Launch WebXR Spatial VR/AR</button>
+            <button style="margin-top:4px;" onclick="exportHardwareVideo()">Export Video (WebCodecs)</button>
+        </div>
+
+        <div class="panel-box">
+            <h3>5. Hardware & Local Mount</h3>
+            <button onclick="mountLocalFolder()">Mount Local Directory (RAM)</button>
+            <button style="margin-top:4px;" onclick="connectWebSerial()">Connect USB Serial (Desktop/Chromium)</button>
+            <button style="margin-top:4px;" onclick="connectWebBluetooth()">Connect BLE Bluetooth IoT (Mobile/Desktop)</button>
+        </div>
+    </div>
+
+    <div id="viewport">
+        <div id="canvas-container">
+            <canvas id="main-canvas"></canvas>
+            <div id="svg-layer" style="position:absolute; top:0; left:0; width:100%; height:100%; pointer-events:none;"></div>
+        </div>
+        <div id="console">
+            [SYSTEM INITIALIZED]: Zero-memory Sovereign PWA ready...<br>
+        </div>
+    </div>
+
+    <!-- MODULE ENGINE & PWA INITIALIZER -->
+    <script type="module">
+        import { pipeline, env } from "https://cdn.jsdelivr.net/npm/@huggingface/transformers@3.0.0";
+        env.allowLocalModels = false;
+
+        // INLINE PWA GENERATOR (Manifest + Apple Touch Icon + Service Worker)
+        (function initInlinePWA() {
+            const iconSvg = `<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512">
+                <rect width="512" height="512" rx="100" fill="#07080c"/>
+                <circle cx="256" cy="256" r="180" fill="none" stroke="#00ffcc" stroke-width="16" stroke-dasharray="30 15"/>
+                <text x="256" y="320" font-family="Courier, monospace" font-size="200" font-weight="bold" fill="#00ffcc" text-anchor="middle">S</text>
+            </svg>`;
+            const iconUrl = 'data:image/svg+xml;base64,' + btoa(iconSvg);
+            
+            const appleIcon = document.getElementById('apple-icon');
+            if (appleIcon) appleIcon.href = iconUrl;
+
+            const manifestData = {
+                name: "Sovereign Fabric OS",
+                short_name: "Sovereign",
+                start_url: window.location.href,
+                display: "standalone",
+                background_color: "#07080c",
+                theme_color: "#07080c",
+                icons: [{ src: iconUrl, sizes: "512x512", type: "image/svg+xml" }]
+            };
+            const manifestBlob = new Blob([JSON.stringify(manifestData)], { type: 'application/json' });
+            const manifestLink = document.getElementById('manifest-link');
+            if (manifestLink) manifestLink.href = URL.createObjectURL(manifestBlob);
+
+            if ('serviceWorker' in navigator && window.location.protocol === 'https:') {
+                const swCode = `
+                    const CACHE_NAME = 'sovereign-v1';
+                    self.addEventListener('install', e => {
+                        e.waitUntil(caches.open(CACHE_NAME).then(cache => cache.add(location.href)));
+                    });
+                    self.addEventListener('fetch', e => {
+                        e.respondWith(caches.match(e.request).then(res => res || fetch(e.request)));
+                    });
+                `;
+                const swBlob = new Blob([swCode], { type: 'application/javascript' });
+                navigator.serviceWorker.register(URL.createObjectURL(swBlob)).catch(() => {});
+            }
+        })();
+
+        class LocalVectorIndex {
+            constructor() { this.embedder = null; this.heap = []; }
+            async init() {
+                log("[RAG Engine]: Allocating WASM/WebGPU vector embedder...");
+                this.embedder = await pipeline("feature-extraction", "Xenova/all-MiniLM-L6-v2");
+                log("[RAG Engine]: Vector Index operational.");
+            }
+            async add(text) {
+                if (!this.embedder) await this.init();
+                const out = await this.embedder(text, { pooling: "mean", normalize: true });
+                this.heap.push({ text, vec: Array.from(out.data) });
+                log(`[RAG Engine]: Chunk indexed into JS heap (${this.heap.length} total).`);
+            }
+            async search(q) {
+                if (this.heap.length === 0) return log("[RAG Engine]: Heap empty. Select files first.");
+                const qOut = await this.embedder(q, { pooling: "mean", normalize: true });
+                const qVec = Array.from(qOut.data);
+                const scored = this.heap.map(h => ({ text: h.text, score: this.dot(qVec, h.vec) }));
+                scored.sort((a,b) => b.score - a.score);
+                log(`[RAG Match]: "${scored[0].text.substring(0, 80)}..." (${(scored[0].score * 100).toFixed(1)}% match)`);
+            }
+            dot(a,b) { return a.reduce((sum, val, i) => sum + val * b[i], 0); }
+        }
+        window.RAG = new LocalVectorIndex();
+
+        window.exportHardwareVideo = async function() {
+            const canvas = document.getElementById('main-canvas');
+            if (!window.VideoEncoder) return log("[WebCodecs]: Hardware VideoEncoder unsupported on this platform.");
+            log("[WebCodecs]: Encoding GPU frames to VideoEncoder stream...");
+            const chunks = [];
+            const encoder = new VideoEncoder({
+                output: chunk => { const b = new ArrayBuffer(chunk.byteLength); chunk.copyTo(b); chunks.push(b); },
+                error: e => console.error(e)
+            });
+            encoder.configure({ codec: 'vp09.00.10.08', width: canvas.width || 800, height: canvas.height || 600, bitrate: 4000000, framerate: 60 });
+            
+            for (let i = 0; i < 120; i++) {
+                const frame = new VideoFrame(canvas, { timestamp: i * 16666 });
+                encoder.encode(frame, { keyFrame: i % 30 === 0 });
+                frame.close();
+                await new Promise(r => setTimeout(r, 16));
+            }
+            await encoder.flush();
+            const blob = new Blob(chunks, { type: 'video/webm' });
+            const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'sovereign-render.webm'; a.click();
+            log("[WebCodecs]: Local video compilation complete.");
+        };
+
+        window.mountLocalFolder = async function() {
+            if (!window.showDirectoryPicker) return log("[Workspace]: Directory picker API unsupported on iOS Safari. Use File Input instead.");
+            try {
+                const dir = await window.showDirectoryPicker();
+                log(`[Workspace]: Mounted directory "${dir.name}".`);
+            } catch(e) { log("[Workspace]: Folder mount aborted."); }
+        };
+
+        window.connectWebSerial = async function() {
+            if (!navigator.serial) return log("[Hardware]: WebSerial is unsupported on mobile/Safari. Use BLE Bluetooth.");
+            try {
+                const port = await navigator.serial.requestPort();
+                await port.open({ baudRate: 115200 });
+                log("[Hardware]: Serial connection established.");
+            } catch(e) { log("[Hardware]: Serial aborted."); }
+        };
+
+        window.connectWebBluetooth = async function() {
+            if (!navigator.bluetooth) return log("[Bluetooth]: WebBluetooth API unsupported on this browser.");
+            try {
+                const dev = await navigator.bluetooth.requestDevice({ acceptAllDevices: true });
+                log(`[Bluetooth]: Paired with device: "${dev.name || 'Wireless Node'}"`);
+            } catch(e) { log(`[Bluetooth Aborted]: ${e.message}`); }
+        };
+    </script>
+
+    <!-- GLOBAL SYSTEM LOGIC -->
+    <script>
+        function log(msg) {
+            const c = document.getElementById('console');
+            c.innerHTML += msg + "<br>";
+            c.scrollTop = c.scrollHeight;
+        }
+
+        function toggleSidebar() {
+            document.getElementById('sidebar').classList.toggle('open');
+        }
+
+        async function initLocalWebGPU() {
+            if (!navigator.gpu) return log("[WebGPU]: Hardware API unavailable or feature flag disabled.");
+            const adapter = await navigator.gpu.requestAdapter();
+            log(`[WebGPU]: GPU Adapter Active: ${adapter?.info?.architecture || 'Generic VRAM'}`);
+        }
+
+        function handleFileSelect(e) {
+            for (let f of e.target.files) {
+                const reader = new FileReader();
+                reader.onload = (evt) => window.RAG.add(evt.target.result);
+                reader.readAsText(f);
+            }
+        }
+
+        function queryRAMRAG() {
+            const q = prompt("Search In-RAM Document Heap:");
+            if (q) window.RAG.search(q);
+        }
+
+        let pyodideInstance = null;
+        async function initPyodideWasm() {
+            if (pyodideInstance) return log("[WASM Python]: Python runtime already loaded.");
+            log("[WASM Python]: Loading CPython interpreter into RAM...");
+            pyodideInstance = await loadPyodide();
+            log("[WASM Python]: Python 3.11 WASM ready.");
+        }
+
+        async function runSamplePython() {
+            if (!pyodideInstance) return log("[WASM Python]: Load WASM Python first.");
+            const res = await pyodideInstance.runPythonAsync("import math\nmath.sqrt(256) * 10");
+            log(`[Python Exec Result]: ${res}`);
+        }
+
+        let ramDatabase = null;
+        async function initSQLiteWasm() {
+            log("[RAM SQL]: Instantiating in-memory SQLite WASM database...");
+            const SQL = await initSqlJs({ locateFile: f => `https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.12.0/${f}` });
+            ramDatabase = new SQL.Database();
+            ramDatabase.run("CREATE TABLE memory_nodes (id INT, tag TEXT); INSERT INTO memory_nodes VALUES (1, 'Sovereign');");
+            const res = ramDatabase.exec("SELECT * FROM memory_nodes;");
+            log(`[RAM SQL]: DB active. Query output: ${JSON.stringify(res[0].values)}`);
+        }
+
+        let scene, camera, renderer, material;
+        function renderGLSLMovie() {
+            document.getElementById('svg-layer').innerHTML = '';
+            const canvas = document.getElementById('main-canvas');
+            scene = new THREE.Scene();
+            camera = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1);
+            renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
+            
+            const resize = () => {
+                renderer.setSize(canvas.clientWidth, canvas.clientHeight, false);
+            };
+            resize();
+            window.addEventListener('resize', resize);
+
+            const fragmentShader = `
+                uniform float time;
+                uniform vec2 resolution;
+                void main() {
+                    vec2 uv = gl_FragCoord.xy / resolution.xy;
+                    vec3 col = 0.5 + 0.5 * cos(time + uv.xyx + vec3(0, 2, 4));
+                    gl_FragColor = vec4(col, 1.0);
+                }
+            `;
+            material = new THREE.ShaderMaterial({
+                uniforms: { time: { value: 1.0 }, resolution: { value: new THREE.Vector2(canvas.clientWidth, canvas.clientHeight) } },
+                fragmentShader
+            });
+            scene.add(new THREE.Mesh(new THREE.PlaneGeometry(2, 2), material));
+
+            function animate(t) {
+                material.uniforms.time.value = t * 0.001;
+                renderer.render(scene, camera);
+                requestAnimationFrame(animate);
+            }
+            animate(0);
+            log("[Movie Engine]: Resizable GLSL shader actively rendering.");
+        }
+
+        async function launchWebXRSession() {
+            if (!navigator.xr) return log("[WebXR]: XR API unsupported on this browser/device.");
+            if (!renderer) renderGLSLMovie();
+            try {
+                const session = await navigator.xr.requestSession('immersive-vr', { optionalFeatures: ['local-floor'] });
+                renderer.xr.enabled = true;
+                await renderer.xr.setSession(session);
+                log("[WebXR]: VR/AR Spatial Session initialized.");
+            } catch(e) { log(`[WebXR Error]: ${e.message}`); }
+        }
+
+        function renderCADBlueprint() {
+            const svgLayer = document.getElementById('svg-layer');
+            svgLayer.innerHTML = `
+                <svg width="100%" height="100%" xmlns="http://www.w3.org/2000/svg" style="background:#07080c;">
+                    <defs>
+                        <pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse">
+                            <path d="M 40 0 L 0 0 0 40" fill="none" stroke="rgba(0, 255, 204, 0.12)" stroke-width="1"/>
+                        </pattern>
+                    </defs>
+                    <rect width="100%" height="100%" fill="url(#grid)" />
+                    <circle cx="50%" cy="50%" r="120" fill="none" stroke="#00ffcc" stroke-width="1.5" stroke-dasharray="8 4" />
+                    <rect x="25%" y="25%" width="50%" height="50%" fill="none" stroke="#00ffcc" stroke-width="2" />
+                    <text x="27%" y="29%" fill="#00ffcc" font-size="12">RESPONSIVE CAD BLUEPRINT</text>
+                </svg>
+            `;
+            log("[CAD Engine]: SVG blueprint rendered.");
+        }
+
+        class VoiceController {
+            constructor() {
+                const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+                if (!SR) return;
+                this.rec = new SR();
+                this.rec.continuous = true;
+                this.rec.lang = 'en-US';
+                this.active = false;
+                
+                this.rec.onresult = (e) => {
+                    const phrase = e.results[e.results.length - 1][0].transcript.trim().toLowerCase();
+                    log(`[Voice Input]: "${phrase}"`);
+                    this.parseIntent(phrase);
+                };
+                this.rec.onend = () => { if (this.active) this.rec.start(); };
+            }
+            toggle() {
+                if (this.active) {
+                    this.active = false; this.rec.stop();
+                    document.getElementById('mic-btn').innerText = "🎙️ Start Listener ('Hey Sovereign')";
+                    document.getElementById('voice-status').innerText = "Voice: Standby";
+                } else {
+                    this.active = true; this.rec.start();
+                    document.getElementById('mic-btn').innerText = "🛑 Stop Listening";
+                    document.getElementById('voice-status').innerText = "Voice: Active (Listening...)";
+                    log("[Voice Core]: Voice listener active.");
+                }
+            }
+            parseIntent(cmd) {
+                if (cmd.includes("shader") || cmd.includes("movie")) renderGLSLMovie();
+                else if (cmd.includes("cad") || cmd.includes("blueprint")) renderCADBlueprint();
+                else if (cmd.includes("python")) runSamplePython();
+                else if (cmd.includes("video")) exportHardwareVideo();
+                else if (cmd.includes("clear")) document.getElementById('console').innerHTML = "[CONSOLE PURGED]<br>";
+            }
+        }
+        window.VoiceCore = new VoiceController();
+        function toggleVoiceControl() { window.VoiceCore.toggle(); }
+    </script>
+</body>
+</html>
